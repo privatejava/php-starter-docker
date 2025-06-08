@@ -1,0 +1,64 @@
+services:
+  # Nginx service to serve your PHP application
+  nginx:
+    image: nginx:${NGINX_VERSION}
+    ports:
+      - "${APP_PORT}:80" # Use APP_PORT from .env
+    volumes:
+      - ${PHP_APP_DIR}:/var/www/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - app_network
+
+  # PHP-FPM service
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+    volumes:
+      - ${PHP_APP_DIR}:/var/www/html
+      - ./php.ini:/usr/local/etc/php/php.ini:ro
+    networks:
+      - app_network
+
+  # MySQL database service
+  db:
+    image: mysql:${MYSQL_VERSION}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT}:3306" # Use MYSQL_PORT from .env (optional)
+    networks:
+      - app_network
+
+  # phpMyAdmin service for database management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:${PMA_VERSION}
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      UPLOAD_LIMIT: 64M
+      MEMORY_LIMIT: 256M
+    ports:
+      - "${PHPMYADMIN_PORT}:80" # Map to PHPMYADMIN_PORT from .env
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+volumes:
+  db_data:
+
+networks:
+  app_network:
+    driver: bridge
